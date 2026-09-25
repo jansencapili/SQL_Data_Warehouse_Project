@@ -6,7 +6,7 @@
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)
 
-> A portfolio project showing how raw, messy operational exports become a clean, trustworthy foundation for business reporting — built entirely on SQL Server, Docker, and T-SQL.
+> A portfolio project showing how raw, messy operational exports become a clean, trustworthy foundation for business reporting — built entirely on Visual Studio Code(SQL Server), Docker, and SQL.
 
 ## Table of Contents
 - [Data Architecture](#data-architecture)
