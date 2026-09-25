@@ -1,112 +1,175 @@
-# Data Warehouse and Analytics Project
+# 🏗️ Data Warehouse & Analytics Project
 
-Welcome to the **Data Warehouse and Analytics Project** repository! 🚀  
-This project demonstrates a comprehensive data warehousing and analytics solution, from building a data warehouse to generating actionable insights. Designed as a portfolio project, it highlights industry best practices in data engineering and analytics.
+**An end-to-end SQL Server ETL pipeline built on the Medallion Architecture — turning raw CRM and ERP exports into analytics-ready data.**
+
+![SQL Server](https://img.shields.io/badge/SQL_Server-CC2927?style=for-the-badge&logo=microsoftsqlserver&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)
+
+> A portfolio project showing how raw, messy operational exports become a clean, trustworthy foundation for business reporting — built entirely on SQL Server, Docker, and T-SQL.
+
+## Table of Contents
+- [Data Architecture](#data-architecture)
+- [Highlights](#highlights)
+- [Tech Stack](#tech-stack)
+- [Project Requirements](#project-requirements)
+- [Repository Structure](#repository-structure)
+- [Getting Started](#getting-started)
+- [License](#license)
+- [About Me](#about-me)
 
 ---
+
 ## Data Architecture
 
-The data architecture for this project follows Medallion Architecture **Bronze**, **Silver**, and **Gold** layers:
 ![Data Architecture](docs/DataWarehouseDesign.png)
 
-1. **Bronze Layer**: Stores raw data as-is from the source systems. Data is ingested from CSV Files into SQL Server Database.
-2. **Silver Layer**: This layer includes data cleansing, standardization, and normalization processes to prepare data for analysis.
-3. **Gold Layer**: Houses business-ready data modeled into a star schema required for reporting and analytics.
+The project follows the **Medallion Architecture**, moving data through three progressively cleaner layers:
 
----
-## Project Overview
-
-This project involves:
-
-1. **Data Architecture**: Designing a Modern Data Warehouse Using Medallion Architecture **Bronze**, **Silver**, and **Gold** layers.
-2. **ETL Pipelines**: Extracting, transforming, and loading data from source systems into the warehouse.
-3. **Data Modeling**: Developing fact and dimension tables optimized for analytical queries.
-4. **Analytics & Reporting**: Creating SQL-based reports and dashboards for actionable insights.
-
-This repository is an excellent resource for professionals and students looking to showcase expertise in:
-- SQL Development
-- Data Architect
-- Data Engineering  
-- ETL Pipeline Developer  
-- Data Modeling  
-- Data Analytics  
+| Layer | Purpose | Example |
+|---|---|---|
+| 🥉 **Bronze** | Raw data, ingested as-is from source CSVs | `bronze.crm_cust_info` |
+| 🥈 **Silver** | Cleansed, standardized, and deduplicated | `silver.crm_cust_info` |
+| 🥇 **Gold** | Business-ready star schema for reporting | fact & dimension views |
 
 ---
 
-## Important Links & Tools:
+## Highlights
 
-- **[Datasets](datasets/):** Access to the project dataset (csv files).
-- **[Visual Studio Code](https://code.visualstudio.com/):** Used for writing and executing SQL scripts.
-- **[Docker](https://docker.com):** Set up and manage the database environment.
-- **[Git Repository](https://github.com/):** Set up a GitHub account and repository to manage, version, and collaborate on your code efficiently.
-- **[DrawIO](https://www.drawio.com/):** Design data architecture, models, flows, and diagrams.
-- **[Notion](https://www.notion.com/templates/sql-data-warehouse-project):** Get the Project Template from Notion
+What the Silver-layer transformation logic actually does, beyond a simple copy-through:
+
+- 🔁 **Idempotent, re-runnable loads** — every table follows a `TRUNCATE` + `INSERT` pattern inside a single `TRY/CATCH` block, so the whole Silver layer can be rebuilt from scratch at any time.
+- 🛡️ **Defensive cleansing** — marital status, gender, and country codes are normalized to readable values with an explicit `'n/a'` fallback instead of a silent `NULL`; malformed or zero-value dates are caught and nulled rather than breaking the load.
+- 🧮 **Self-correcting business logic** — sales figures are recalculated on the fly whenever the source `sales`, `quantity`, and `price` values don't reconcile with each other.
+- 🪵 **Built-in observability** — every load step prints its own duration plus a final batch summary, so a slow or failed run is easy to spot from the output alone.
+
+A sample of the cleansing logic — deduplicating and normalizing raw CRM customer records:
+
+```sql
+SELECT
+    cst_id,
+    cst_key,
+    TRIM(cst_firstname) AS cst_firstname,
+    CASE
+        WHEN UPPER(TRIM(cst_marital_status)) = 'S' THEN 'Single'
+        WHEN UPPER(TRIM(cst_marital_status)) = 'M' THEN 'Married'
+        ELSE 'n/a'
+    END AS cst_marital_status,
+    ROW_NUMBER() OVER (PARTITION BY cst_id ORDER BY cst_create_date DESC) AS flag_last
+FROM bronze.crm_cust_info
+WHERE cst_id IS NOT NULL;
+```
+
+---
+
+## Tech Stack
+
+| Category | Tool |
+|---|---|
+| Database Engine | SQL Server 2022 (Docker) |
+| IDE | Visual Studio Code + `mssql` extension |
+| Containerization | Docker |
+| Version Control | Git & GitHub |
+| Diagramming | [draw.io](https://www.drawio.com/) |
+| Project Template | [Notion](https://www.notion.com/templates/sql-data-warehouse-project) |
+
+**Resources**
+- 📂 [`datasets/`](datasets/) — raw ERP & CRM source files
+
 ---
 
 ## Project Requirements
 
 ### Building the Data Warehouse (Data Engineering)
 
-#### Objective
-Develop a modern data warehouse using SQL Server to consolidate sales data, enabling analytical reporting and informed decision-making.
+**Objective:** develop a modern data warehouse in SQL Server that consolidates sales data from two source systems into a single, analysis-ready model.
 
-#### Specifications
-- **Data Sources**: Import data from two source systems (ERP and CRM) provided as CSV files.
-- **Data Quality**: Cleanse and resolve data quality issues prior to analysis.
-- **Integration**: Combine both sources into a single, user-friendly data model designed for analytical queries.
-- **Scope**: Focus on the latest dataset only; historization of data is not required.
-- **Documentation**: Provide clear documentation of the data model to support both business stakeholders and analytics teams.
-
----
+**Specifications:**
+- **Sources** — import CRM and ERP data, both delivered as CSV files.
+- **Quality** — cleanse and resolve data quality issues before data reaches the Silver layer.
+- **Integration** — merge both sources into one user-friendly model built for analytical queries.
+- **Scope** — latest snapshot only; historical tracking (SCD) is out of scope.
+- **Documentation** — clear data model docs for both business stakeholders and analytics teams.
 
 ### BI: Analytics & Reporting (Data Analysis)
 
-#### Objective
-Develop SQL-based analytics to deliver detailed insights into:
-- **Customer Behavior**
-- **Product Performance**
-- **Sales Trends**
+**Objective:** deliver SQL-based analytics on customer behavior, product performance, and sales trends — giving stakeholders the metrics they need for strategic decisions.
 
-These insights empower stakeholders with key business metrics, enabling strategic decision-making.  
+See [docs/requirements.md](docs/requirements.md) for full detail.
 
-For more details, refer to [docs/requirements.md](docs/requirements.md).
+---
 
 ## Repository Structure
+
 ```
 data-warehouse-project/
 │
-├── datasets/                           # Raw datasets used for the project (ERP and CRM data)
+├── datasets/                     # Raw ERP and CRM source files
 │
-├── docs/                               # Project documentation and architecture details
-│   ├── etl.drawio                      # Draw.io file shows all different techniquies and methods of ETL
-│   ├── data_architecture.drawio        # Draw.io file shows the project's architecture
-│   ├── data_catalog.md                 # Catalog of datasets, including field descriptions and metadata
-│   ├── data_flow.drawio                # Draw.io file for the data flow diagram
-│   ├── data_models.drawio              # Draw.io file for data models (star schema)
-│   ├── naming-conventions.md           # Consistent naming guidelines for tables, columns, and files
+├── docs/                         # Architecture diagrams and documentation
+│   ├── data_architecture.drawio
+│   ├── data_flow.drawio
+│   ├── data_models.drawio
+│   ├── data_catalog.md
+│   ├── naming-conventions.md
+│   └── etl.drawio
 │
-├── scripts/                            # SQL scripts for ETL and transformations
-│   ├── bronze/                         # Scripts for extracting and loading raw data
-│   ├── silver/                         # Scripts for cleaning and transforming data
-│   ├── gold/                           # Scripts for creating analytical models
+├── scripts/                      # SQL scripts for ETL and transformations
+│   ├── bronze/                   # Raw data ingestion
+│   ├── silver/                   # Cleansing and transformation
+│   └── gold/                     # Analytical star schema
 │
-├── tests/                              # Test scripts and quality files
+├── tests/                        # Data quality and validation scripts
 │
-├── README.md                           # Project overview and instructions
-├── LICENSE                             # License information for the repository
-├── .gitignore                          # Files and directories to be ignored by Git
-└── requirements.txt                    # Dependencies and requirements for the project
+├── README.md
+├── LICENSE
+├── .gitignore
+└── requirements.txt
 ```
+
+---
+
+## Getting Started
+
+1. **Clone the repository**
+```bash
+   git clone <your-repo-url>
+   cd data-warehouse-project
+```
+
+2. **Spin up SQL Server in Docker**
+```bash
+   docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=<YourStrong!Passw0rd>" \
+     -p 1433:1433 --name sql \
+     -v "$(pwd)/datasets:/var/opt/mssql/data/datasets" \
+     -d mcr.microsoft.com/mssql/server:2022-latest
+```
+   Use your own password, and keep real credentials out of the repo.
+
+3. **Create the schemas and tables** by running the DDL scripts in `scripts/bronze/` and `scripts/silver/`.
+
+4. **Load the data**
+```sql
+   EXEC bronze.load_bronze;
+   EXEC silver.load_silver;
+```
+
+5. **Query the Gold layer** for reporting-ready views once it's built out.
+
 ---
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE). You are free to use, modify, and share this project with proper attribution.
+This project is licensed under the [MIT License](LICENSE) — free to use, modify, and share with attribution.
+
+---
 
 ## About Me
 
-Hi there! I'm **Jansen Capili** I’m a Business Intelligence Analyst.
-
-Feel free to connect with me on the LinkedIn:
+Hi, I'm **Jansen Capili** — a Business Intelligence Analyst.
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](http://linkedin.com/in/gerryjansencapili)
+
+---
+
+⭐ If this project was useful or interesting, consider giving it a star!
